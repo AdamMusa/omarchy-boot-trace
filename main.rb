@@ -405,7 +405,7 @@ OmarchyUI.plugin do
                   text entry.fetch("title"), width: 430
                   text entry.fetch("detail", ""), color: status_color.call(entry.fetch("status", "")), width: 90
                 end
-                progress(duration * 100 / max_duration, width: 590, height: 4, color: status_color.call(entry.fetch("status", "")))
+                progress(duration * 100 / max_duration, minimum: 0, maximum: 100, width: 590, height: 4, color: status_color.call(entry.fetch("status", "")))
               end
             end
       end
