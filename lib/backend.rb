@@ -112,13 +112,15 @@ class SuiteBackend
       end
     end
     rows = blame.lines.first(24).filter_map do |line|
-      duration, unit = line.strip.split(/\s+/, 2)
+      parts = line.strip.split
+      duration = parts.shift
+      unit = parts.join(" ")
       next if unit.to_s.empty?
       milliseconds = to_ms.call(duration)
       item(unit, duration, milliseconds >= 2_000 ? "slow" : "normal", "#{milliseconds.round} ms on last boot")
     end
-    total = overview.scan(/=\s*([0-9.]+)s/).flatten.last.to_f
-    total = rows.map { |record| record["meta"].to_s[/\d+/].to_i }.sum / 1_000.0 if total <= 0
+    total = overview.split("=").last.to_s.to_f
+    total = rows.map { |record| record["meta"].to_s.split.first.to_i }.sum / 1_000.0 if total <= 0
     @history << { "at" => Time.now.to_i, "value" => total.round(2) }
     @history = @history.last(MAX_HISTORY)
     @score = total.round

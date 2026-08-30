@@ -117,13 +117,15 @@ class SuiteBackend
       end
     end
     rows = blame.lines.first(24).filter_map do |line|
-      duration, unit = line.strip.split(/\s+/, 2)
+      parts = line.strip.split
+      duration = parts.shift
+      unit = parts.join(" ")
       next if unit.to_s.empty?
       milliseconds = to_ms.call(duration)
       item(unit, duration, milliseconds >= 2_000 ? "slow" : "normal", "#{milliseconds.round} ms on last boot")
     end
-    total = overview.scan(/=\s*([0-9.]+)s/).flatten.last.to_f
-    total = rows.map { |record| record["meta"].to_s[/\d+/].to_i }.sum / 1_000.0 if total <= 0
+    total = overview.split("=").last.to_s.to_f
+    total = rows.map { |record| record["meta"].to_s.split.first.to_i }.sum / 1_000.0 if total <= 0
     @history << { "at" => Time.now.to_i, "value" => total.round(2) }
     @history = @history.last(MAX_HISTORY)
     @score = total.round
@@ -327,6 +329,18 @@ OmarchyUI.plugin do
     end
   end
 
+  first_number = lambda do |value|
+    number = 0
+    value.to_s.split.each do |token|
+      candidate = token.to_i
+      if candidate > 0
+        number = candidate
+        break
+      end
+    end
+    number
+  end
+
   bar_widget do
     row spacing: 7 do
       icon :clock, color: "#ef8f73"
@@ -353,7 +367,7 @@ OmarchyUI.plugin do
         end
 
         separator
-        durations = entries.first(12).map { |entry| entry.fetch("meta", "")[/d+/].to_i }
+        durations = entries.first(12).map { |entry| first_number.call(entry.fetch("meta", "")) }
             boot_history = history.map { |point| point.fetch("value", 0).to_f }
             row spacing: 18 do
               column spacing: 0 do
