@@ -368,21 +368,28 @@ OmarchyUI.plugin do
 
         separator
         durations = entries.first(12).map { |entry| first_number.call(entry.fetch("meta", "")) }
-            boot_history = history.map { |point| point.fetch("value", 0).to_f }
-            row spacing: 18 do
+            max_duration = [durations.max.to_i, 1].max
+            row spacing: 42 do
               column spacing: 0 do
                 text state.snapshot.fetch("score").to_s, size: 44, bold: true, color: "#ef8f73"
                 text "seconds to userspace", style: :caption
               end
-              sparkline boot_history, width: 420, height: 72, color: "#ef8f73", fill_color: "#22ef8f73", show_points: false
+              column spacing: 0 do
+                text entries.length.to_s, size: 30, bold: true
+                text "timed startup units", style: :caption
+              end
             end
-            bar_chart durations, width: 590, height: 120, colors: ["#ef8f73"], show_grid: false, bar_spacing: 8
-            section_header "Slowest units"
+            separator
+            section_header "Critical timing path"
             entries.first(10).each_with_index do |entry, index|
-              row spacing: 10 do
-                text (index + 1).to_s.rjust(2, "0"), style: :caption, color: "#ef8f73", width: 24
-                text entry.fetch("title"), width: 430
-                text entry.fetch("detail", ""), color: status_color.call(entry.fetch("status", "")), width: 90
+              duration = first_number.call(entry.fetch("meta", ""))
+              column spacing: 5 do
+                row spacing: 10 do
+                  text (index + 1).to_s.rjust(2, "0"), style: :caption, color: "#ef8f73", width: 24
+                  text entry.fetch("title"), width: 430
+                  text entry.fetch("detail", ""), color: status_color.call(entry.fetch("status", "")), width: 90
+                end
+                progress(duration * 100 / max_duration, width: 590, height: 4, color: status_color.call(entry.fetch("status", "")))
               end
             end
       end
