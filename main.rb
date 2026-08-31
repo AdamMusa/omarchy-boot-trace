@@ -361,56 +361,84 @@ OmarchyUI.plugin do
   end
 
   bar_widget do
-    row spacing: 7 do
-      icon :clock, color: "#ef8f73"
-      text { state.snapshot.fetch("summary") }
+    row spacing: 6 do
+      icon :clock, size: 14, color: "#ff9f7f"
+      text "BOOT", style: :caption, color: "#ff9f7f"
+      text(style: :caption) { state.snapshot.fetch("summary") }
     end
     on_click { open_panel :boot_trace }
   end
 
   panel :boot_trace do
-    scroll width: 660, height: 760 do
+    scroll width: 660, height: 780 do
       dynamic id: :scene, spacing: 16 do
         entries = state.snapshot.fetch("items")
-        history = state.snapshot.fetch("history")
+        durations = entries.first(12).map { |entry| first_number.call(entry.fetch("meta", "")) }
+        max_duration = [durations.max.to_i, 1].max
+        slow_count = entries.count { |entry| entry.fetch("status", "") == "slow" }
 
-        row spacing: 12 do
-          icon :clock, size: 30, color: "#ef8f73"
-          column spacing: 2 do
-            text "Boot Trace", style: :heading, width: 500
-            text state.snapshot.fetch("summary"), style: :caption, width: 500
-          end
-          action_button :refresh, tooltip: "Refresh", foreground: "#ef8f73" do
-            async(&refresh)
+        column spacing: 2 do
+          text "#{state.snapshot.fetch("summary")} from power to prompt", style: :caption, width: 610
+          row spacing: 9 do
+            text "Boot", size: 30, bold: true
+            icon :clock, size: 22, color: "#ff9f7f"
+            text "Trace", size: 30, bold: true, width: 470
+            action_button :refresh, tooltip: "Retime last boot", foreground: "#ff9f7f" do
+              async(&refresh)
+            end
           end
         end
 
         separator
-        durations = entries.first(12).map { |entry| first_number.call(entry.fetch("meta", "")) }
-            max_duration = [durations.max.to_i, 1].max
-            row spacing: 42 do
-              column spacing: 0 do
-                text state.snapshot.fetch("score").to_s, size: 44, bold: true, color: "#ef8f73"
-                text "seconds to userspace", style: :caption
+        row spacing: 0 do
+          column spacing: 1 do
+            text "POWER", style: :caption, color: "#829088"
+            text "●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", size: 17, color: "#ff9f7f"
+          end
+          column spacing: 1 do
+            text "READY", style: :caption, color: "#d8ff73"
+            text "◆", size: 25, bold: true, color: "#d8ff73"
+          end
+        end
+        row spacing: 42 do
+          column spacing: 0 do
+            text state.snapshot.fetch("score").to_s.rjust(2, "0"), size: 54, bold: true, color: "#ff9f7f"
+            text "SECONDS", style: :caption, color: "#ff9f7f"
+          end
+          column spacing: 0 do
+            text entries.length.to_s.rjust(2, "0"), size: 30, bold: true
+            text "TIMED UNITS", style: :caption
+          end
+          column spacing: 0 do
+            text slow_count.to_s.rjust(2, "0"), size: 30, bold: true,
+                 color: slow_count.zero? ? "#d8ff73" : "#ff9f7f"
+            text "SLOW STAGES", style: :caption
+          end
+        end
+        separator
+        row spacing: 10 do
+          text "CRITICAL RUNWAY", size: 12, bold: true, color: "#ff9f7f", width: 470
+          text "LAST BOOT", style: :caption, color: "#829088"
+        end
+
+        entries.first(10).each_with_index do |entry, index|
+          duration = first_number.call(entry.fetch("meta", ""))
+          stage_color = entry.fetch("status", "") == "slow" ? "#ff8b8b" : "#d8ff73"
+          column spacing: 5 do
+            row spacing: 10 do
+              text (index + 1).to_s.rjust(2, "0"), style: :caption, color: stage_color, width: 24
+              column spacing: 1 do
+                text entry.fetch("title"), width: 430, size: 15, bold: true, wrap: true
+                text entry.fetch("meta", ""), style: :caption, width: 430, color: "#829088"
               end
-              column spacing: 0 do
-                text entries.length.to_s, size: 30, bold: true
-                text "timed startup units", style: :caption
-              end
+              text entry.fetch("detail", ""), color: stage_color, width: 100
             end
-            separator
-            section_header "Critical timing path"
-            entries.first(10).each_with_index do |entry, index|
-              duration = first_number.call(entry.fetch("meta", ""))
-              column spacing: 5 do
-                row spacing: 10 do
-                  text (index + 1).to_s.rjust(2, "0"), style: :caption, color: "#ef8f73", width: 24
-                  text entry.fetch("title"), width: 430
-                  text entry.fetch("detail", ""), color: status_color.call(entry.fetch("status", "")), width: 90
-                end
-                progress(duration * 100 / max_duration, minimum: 0, maximum: 100, width: 590, height: 4, color: status_color.call(entry.fetch("status", "")))
-              end
-            end
+            progress(duration * 100 / max_duration, minimum: 0, maximum: 100,
+                     width: 590, height: 4, color: stage_color)
+            text "    ●#{"━" * [duration * 18 / max_duration, 1].max}", style: :caption, color: stage_color
+          end
+          separator unless index == [entries.length, 10].min - 1
+        end
       end
     end
   end
